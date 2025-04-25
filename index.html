@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>บาคาร่าโดยเอกลักษณ์</title>
+  <style>
+    body { font-family: sans-serif; background: #0a0f1a; color: white; padding: 10px; }
+    h1 { text-align: center; color: gold; }
+    button { padding: 8px 12px; margin: 5px; border: none; border-radius: 6px; font-size: 16px; }
+    .player { background: #1e90ff; color: white; }
+    .banker { background: #dc143c; color: white; }
+    .reset { background: gray; color: white; }
+    #grid {
+      display: grid;
+      grid-template-columns: repeat(40, 16px);
+      grid-auto-rows: 16px;
+      gap: 1px;
+      overflow-x: auto;
+      background: #022;
+      padding: 5px;
+      margin-bottom: 20px;
+    }
+    .circle {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+    }
+    .P { background: #1e90ff; }
+    .B { background: #dc143c; }
+    .ai-box {
+      border: 1px solid #555;
+      padding: 10px;
+      margin: 5px;
+      background: #111;
+      border-radius: 5px;
+      width: 200px;
+    }
+    .ai-container {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    .top5-item {
+      padding: 4px;
+      margin: 2px 0;
+      background: #222;
+    }
+  </style>
+</head>
+<body>
+  <h1>บาคาร่าโดยเอกลักษณ์</h1>
+  <div>
+    <button class="player" onclick="addResult('P')">Player</button>
+    <button class="banker" onclick="addResult('B')">Banker</button>
+    <button class="reset" onclick="resetGrid()">Reset</button>
+  </div>
+
+  <div id="grid"></div>
+
+  <h2>AI วิเคราะห์</h2>
+  <div id="lockedAIBox" style="margin-bottom: 10px;">ยังไม่ได้เลือก AI</div>
+  <div class="ai-container" id="aiPanel"></div>
+
+  <h2>Top 5 AI ที่แม่นที่สุด</h2>
+  <div id="top5Panel"></div>
+
+  <script>
+    let results = [];
+    const maxRows = 6;
+    let lockedAI = null;
+
+    const aiList = [
+      { name: "AI มังกรทอง", logic: 0, total: 0, correct: 0, lastGuess: null },
+      { name: "AI ปิงปองไฟ", logic: 1, total: 0, correct: 0, lastGuess: null },
+      { name: "AI จิตสังหาร", logic: 2, total: 0, correct: 0, lastGuess: null },
+      { name: "AI มือเก๋า", logic: 3, total: 0, correct: 0, lastGuess: null },
+      { name: "AI แทงสวน", logic: 1, total: 0, correct: 0, lastGuess: null },
+      { name: "AI จังหวะเทพ", logic: 4, total: 0, correct: 0, lastGuess: null },
+      { name: "AI เฉียบคม", logic: 0, total: 0, correct: 0, lastGuess: null },
+      { name: "AI นิ่งลึก", logic: 3, total: 0, correct: 0, lastGuess: null },
+      { name: "AI กูรู", logic: 4, total: 0, correct: 0, lastGuess: null },
+      { name: "AI ไร้พ่าย", logic: 2, total: 0, correct: 0, lastGuess: null }
+    ];
+
+    function renderGrid() {
+      const grid = document.getElementById("grid");
+      grid.innerHTML = "";
+      let col = 0, row = 0;
+      for (let i = 0; i < results.length; i++) {
+        const div = document.createElement("div");
+        div.className = "circle " + results[i];
+        div.style.gridColumn = col + 1;
+        div.style.gridRow = row + 1;
+        grid.appendChild(div);
+
+        if (i > 0 && results[i] === results[i - 1]) {
+          if (row < maxRows - 1) {
+            row++;
+          } else {
+            col++;
+            row = 0;
+          }
+        } else {
+          col++;
+          row = 0;
+        }
+      }
+    }
+
+    function addResult(result) {
+      results.push(result);
+      runAI(result);
+      renderGrid();
+    }
+
+    function resetGrid() {
+      results = [];
+      aiList.forEach(ai => {
+        ai.total = 0;
+        ai.correct = 0;
+        ai.lastGuess = null;
+      });
+      lockedAI = null;
+      document.getElementById("lockedAIBox").innerText = "ยังไม่ได้เลือก AI";
+      renderGrid();
+      renderAIs();
+    }
+
+    function runAI(actual) {
+      aiList.forEach(ai => {
+        let guess = predict(ai.logic);
+        ai.lastGuess = guess;
+        ai.total++;
+        if (guess === actual) ai.correct++;
+      });
+      renderAIs();
+    }
+
+    function predict(type) {
+      if (results.length === 0) return Math.random() < 0.5 ? "P" : "B";
+      if (type === 0) return results[results.length - 1]; // มังกร
+      if (type === 1) return results[results.length - 1] === "P" ? "B" : "P"; // ปิงปอง
+      if (type === 2) return Math.random() < 0.5 ? "P" : "B"; // สุ่ม
+      if (type === 3) { // ตามสถิติรวม
+        const pCount = results.filter(r => r === "P").length;
+        const bCount = results.filter(r => r === "B").length;
+        return pCount > bCount ? "P" : "B";
+      }
+      if (type === 4) { // ตามแพทเทิร์น 3 ตัวหลัง
+        if (results.length < 3) return "P";
+        const pattern = results.slice(-3).join("");
+        return pattern === "PPP" ? "B" : "P";
+      }
+    }
+
+    function renderAIs() {
+      const aiPanel = document.getElementById("aiPanel");
+      const top5Panel = document.getElementById("top5Panel");
+      aiPanel.innerHTML = "";
+      top5Panel.innerHTML = "";
+
+      aiList.forEach((ai, i) => {
+        const percent = ai.total > 0 ? ((ai.correct / ai.total) * 100).toFixed(1) : "-";
+        const box = document.createElement("div");
+        box.className = "ai-box";
+        box.innerHTML = `
+          <strong>${ai.name}</strong><br>
+          เดา: ${ai.lastGuess || "-"} | ถูก: ${ai.correct}/${ai.total} (${percent}%)<br>
+          <button onclick="lockAI(${i})">เลือกใช้</button>
+        `;
+        aiPanel.appendChild(box);
+      });
+
+      const sorted = [...aiList].sort((a, b) => {
+        const aPercent = a.total ? a.correct / a.total : 0;
+        const bPercent = b.total ? b.correct / b.total : 0;
+        return bPercent - aPercent;
+      }).slice(0, 5);
+
+      sorted.forEach(ai => {
+        const percent = ai.total > 0 ? ((ai.correct / ai.total) * 100).toFixed(1) : "-";
+        const div = document.createElement("div");
+        div.className = "top5-item";
+        div.textContent = `${ai.name} - ${percent}%`;
+        top5Panel.appendChild(div);
+      });
+
+      if (lockedAI !== null) {
+        document.getElementById("lockedAIBox").innerText = `กำลังใช้งาน: ${aiList[lockedAI].name}`;
+      }
+    }
+
+    function lockAI(index) {
+      lockedAI = index;
+      renderAIs();
+    }
+
+    renderGrid();
+    renderAIs();
+  </script>
+</body>
+</html>
